@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 # Copyright 2017 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -12,6 +14,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
+
 """Example code for TensorFlow Wide & Deep Tutorial using tf.estimator API."""
 from __future__ import absolute_import
 from __future__ import division
@@ -76,7 +79,8 @@ def define_flags():
     flags.DEFINE_string("pretrain"               , "no"            , "yes/no")
     flags.DEFINE_string("embedding_model"        , ""              , "./model_zoo/wide_deep_emb_conv_dropout/model.ckpt-47521")
     flags.DEFINE_integer("embedding_dim"         , 100             , "100/200")
-    flags.DEFINE_boolean("fineturn"              , False           , "fine-turn the embedding")
+    flags.DEFINE_boolean("fineturn"              , True            , "fine-turn the embedding")
+    flags.DEFINE_boolean("with_usm_layer"        , True            , "use usm layer or not")
 
     FLAGS = flags.FLAGS
     return FLAGS
@@ -322,7 +326,7 @@ def emb_conv_nn(features, labels, mode, params):
     print('---------------------\nflatten: '+str(flatten_layer)+'\n')
 
     he_init = tf.contrib.layers.variance_scaling_initializer(mode="FAN_AVG")
-    logits = tf.layers.dense(flatten_layer, 1, activation=None, kernel_regularizer=tf.contrib.layers.l2_regularizer(0.03), bias_regularizer=tf.contrib.layers.l2_regularizer(0.01), kernel_initializer=he_init, bias_initializer=tf.zeros_initializer(), name='logits')
+    logits = tf.layers.dense(flatten_layer, 1, activation=tf.nn.relu, kernel_regularizer=tf.contrib.layers.l2_regularizer(0.03), bias_regularizer=tf.contrib.layers.l2_regularizer(0.01), kernel_initializer=he_init, bias_initializer=tf.zeros_initializer(), name='logits')
 
     # dropout is not suitable for pretrain
     #if 'dropout_rate' in params and params['dropout_rate'] > 0.0:
@@ -403,7 +407,10 @@ def my_model(features, labels, mode, params):
             input_layer = tf.feature_column.input_layer(features, params['deep_feature'])
 
             # concat emb_conv flatten tensor to input_layer
-            #input_layer = tf.concat([input_layer, flatten_layer], axis=1)
+            if model_type.find('conv') >= 0 and FLAGS.with_usm_layer:
+                print('---------------------\nwith_usm:\t'+str(flatten_layer))
+                input_layer = tf.concat([input_layer, flatten_layer], axis=1)
+            print('---------------------\ninput deep layer:\t'+str(input_layer))
 
             units = params['hidden_units']
             layers = [input_layer]
@@ -411,7 +418,12 @@ def my_model(features, labels, mode, params):
                 he_init = tf.contrib.layers.variance_scaling_initializer(mode="FAN_AVG")
                 layer = tf.layers.dense(layers[-1], l_size, activation=tf.nn.relu, name='hidden_layer_'+str(l_id), kernel_regularizer=tf.contrib.layers.l1_regularizer(0.03), bias_regularizer=tf.contrib.layers.l2_regularizer(0.01), kernel_initializer=he_init, bias_initializer=tf.zeros_initializer())
                 layers.append(layer)
-            logits_dnn = tf.layers.dense(layers[-1], 1, activation=None, name='output_layer', kernel_regularizer=tf.contrib.layers.l1_regularizer(0.03), bias_regularizer=tf.contrib.layers.l2_regularizer(0.01), kernel_initializer=he_init, bias_initializer=tf.zeros_initializer())
+                print('---------------------\nhidden_layer:\t'+str(layer))
+
+            last_layer = layers[-1]
+
+            print('---------------------\nlast_layer:\t'+str(last_layer))
+            logits_dnn = tf.layers.dense(last_layer, 1, activation=None, name='output_layer', kernel_regularizer=tf.contrib.layers.l1_regularizer(0.03), bias_regularizer=tf.contrib.layers.l2_regularizer(0.01), kernel_initializer=he_init, bias_initializer=tf.zeros_initializer())
             logits_arr.append(logits_dnn)
             dnn_mean, dnn_vari = tf.nn.moments(logits_dnn, [0])
 
@@ -473,9 +485,15 @@ def my_model(features, labels, mode, params):
         trainer_linear = opt_linear.apply_gradients(grads_linear, global_step=tf.train.get_global_step())
         train_ops.append(trainer_linear)
     if model_type.find('deep') >= 0:
+        flag = False
+        if model_type.find('wide') >= 0:
+            flag = True
         opt_dnn = tf.train.AdamOptimizer(learning_rate=params['learning_rate'])
         grads_dnn = opt_dnn.compute_gradients(loss, tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, scope='dnn_model'))
-        trainer_dnn = opt_dnn.apply_gradients(grads_dnn)
+        if flag:
+            trainer_dnn = opt_dnn.apply_gradients(grads_dnn)
+        else:
+            trainer_dnn = opt_dnn.apply_gradients(grads_dnn, global_step=tf.train.get_global_step())
         train_ops.append(trainer_dnn)
     '''
     # List variables
@@ -497,7 +515,7 @@ def build_estimator(model_dir, model_type):
     wide_columns, deep_columns, embedding_columns = build_model_columns()   #build_model_columns()
     global _GLOBAL_FEATURES
     _GLOBAL_FEATURES = wide_columns + deep_columns + embedding_columns
-    hidden_units = [100, 75, 50, 25]  #[300, 100, 80, 80]
+    hidden_units = [300, 100, 80] #[100, 75, 50, 25]   #[400, 200, 100]  #[300, 100, 80, 80]
 
     # Create a tf.estimator.RunConfig to ensure the model is run on CPU, which
     # trains faster than GPU for this model.
@@ -548,17 +566,20 @@ def input_fn(data_file, num_epochs, shuffle_buffer_size, batch_size):
 
     files = tf.data.Dataset.list_files(data_file)
     # Extract lines from input files using the Dataset API.
-    dataset = files.apply(tf.contrib.data.parallel_interleave(tf.data.TextLineDataset, cycle_length=1)) 
+    dataset = files.apply(
+        tf.contrib.data.parallel_interleave(tf.data.TextLineDataset, cycle_length=5, sloppy=True)
+    )
     #dataset = tf.data.TextLineDataset(files)
 
-    dataset = dataset.shuffle(buffer_size=shuffle_buffer_size)
 
+    dataset = dataset.shuffle(buffer_size=shuffle_buffer_size)
     dataset = dataset.map(parse_csv, num_parallel_calls=5)
 
     # We call repeat after shuffling, rather than before, to prevent separate
     # epochs from blending together.
     dataset = dataset.repeat(num_epochs)
     dataset = dataset.batch(batch_size)
+    dataset = dataset.prefetch(batch_size)
 
     '''
     # save the input tensor name of the graph
