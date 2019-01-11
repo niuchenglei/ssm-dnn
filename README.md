@@ -1,5 +1,8 @@
 Unstructured Semantic Model supported Deep Neural Network for Click-Through Rate Prediction
 
+<img src="images/usm.png" width = "400" height = "226" div align=center />
+<img src="images/basis_scale.png" width = "250" height = "333" div align=center />
+
 # File Description
 
 * ```./wide_deep.py``` : Traditional official Wide\&Deep 
