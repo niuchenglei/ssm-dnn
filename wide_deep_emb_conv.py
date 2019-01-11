@@ -204,6 +204,7 @@ def build_model_columns():
         age, ages, gender, platform, phone, location, network, bidtype, psid, style, link, show, position, zerocate, fircate, seccate, custid, adid, feedid, 
     ]
 
+    '''
     crossed_columns = [
         tf.feature_column.crossed_column(
             ['network', 'psid'], hash_bucket_size=1000),
@@ -220,8 +221,9 @@ def build_model_columns():
         tf.feature_column.crossed_column(
             ['ages', 'platform', 'psid'], hash_bucket_size=1000),
     ]
+    '''
 
-    wide_columns = base_columns + crossed_columns
+    wide_columns = base_columns # + crossed_columns
 
     # age, ages, gender, platform, phone, location, network, bidtype, psid, style, link, show, position, zerocate, fircate, seccate, custid, adid, feedid,
     deep_columns = [
@@ -407,8 +409,10 @@ def my_model(features, labels, mode, params):
             input_layer = tf.feature_column.input_layer(features, params['deep_feature'])
 
             # concat emb_conv flatten tensor to input_layer
+            usm_layer = None
             if model_type.find('conv') >= 0 and FLAGS.with_usm_layer:
-                print('---------------------\nwith_usm:\t'+str(flatten_layer))
+                #usm_layer = flatten_layer
+                print('---------------------\nwith_usm:\t'+str(usm_layer))
                 input_layer = tf.concat([input_layer, flatten_layer], axis=1)
             print('---------------------\ninput deep layer:\t'+str(input_layer))
 
@@ -421,6 +425,8 @@ def my_model(features, labels, mode, params):
                 print('---------------------\nhidden_layer:\t'+str(layer))
 
             last_layer = layers[-1]
+            #if usm_layer is not None:
+            #    last_layer = tf.concat([layers[-1], usm_layer], axis=1) 
 
             print('---------------------\nlast_layer:\t'+str(last_layer))
             logits_dnn = tf.layers.dense(last_layer, 1, activation=None, name='output_layer', kernel_regularizer=tf.contrib.layers.l1_regularizer(0.03), bias_regularizer=tf.contrib.layers.l2_regularizer(0.01), kernel_initializer=he_init, bias_initializer=tf.zeros_initializer())
