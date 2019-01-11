@@ -11,16 +11,7 @@ Unstructured Semantic Model supported Deep Neural Network for Click-Through Rate
 * ```./submit_local.sh``` : Run local
 
 # How to run
-
-1. Log in ```10.75.29.39```.
- 
-2. Go to ```/data0/ads/sunyan5/optimal_method/```.
-
-3. Determine your parameters.
-
-4. Run ```sh submit.sh```
-
-5. Check results on the hadoop UI address (found in the output) in your browser.
+1. Run ```sh submit_local.sh```
 
 # Sample Submit Command
 
