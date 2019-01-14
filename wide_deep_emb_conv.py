@@ -72,7 +72,7 @@ def define_flags():
     flags.DEFINE_float("learning_rate"           , 0.0001          , "Learning rate, default 0.01")
     flags.DEFINE_float("dropout_rate"            , 0.10            , "Drop out rate, default 0.25")
     flags.DEFINE_integer("num_parallel_readers"  , 5               , "number of parallel readers for training data, default 5")
-    flags.DEFINE_integer("save_checkpoints_steps", 5000            , "Save checkpoints every this many steps, default 5000")
+    flags.DEFINE_integer("save_checkpoints_steps", 100             , "Save checkpoints every this many steps, default 5000")
     flags.DEFINE_boolean("run_on_cluster"        , False           , "Whether the cluster info need to be passed in as input, default False")
     flags.DEFINE_string("input_strategy"         , "local"         , "Coorpate with \"input-strategy\", input data strategy")
     flags.DEFINE_string("model_type"             , "wide"          , "wide/deep/conv")
@@ -81,6 +81,7 @@ def define_flags():
     flags.DEFINE_integer("embedding_dim"         , 100             , "100/200")
     flags.DEFINE_boolean("fineturn"              , True            , "fine-turn the embedding")
     flags.DEFINE_boolean("with_usm_layer"        , True            , "use usm layer or not")
+    flags.DEFINE_boolean("only_usm_input"        , False           , "")
 
     FLAGS = flags.FLAGS
     return FLAGS
@@ -409,11 +410,14 @@ def my_model(features, labels, mode, params):
             input_layer = tf.feature_column.input_layer(features, params['deep_feature'])
 
             # concat emb_conv flatten tensor to input_layer
-            usm_layer = None
+            #usm_layer = None
             if model_type.find('conv') >= 0 and FLAGS.with_usm_layer:
                 #usm_layer = flatten_layer
-                print('---------------------\nwith_usm:\t'+str(usm_layer))
-                input_layer = tf.concat([input_layer, flatten_layer], axis=1)
+                print('---------------------\nwith_usm:\t'+str(flatten_layer))
+                if FLAGS.only_usm_input:
+                    input_layer = flatten_layer
+                else:
+                    input_layer = tf.concat([input_layer, flatten_layer], axis=1)
             print('---------------------\ninput deep layer:\t'+str(input_layer))
 
             units = params['hidden_units']
@@ -486,7 +490,8 @@ def my_model(features, labels, mode, params):
     # train_op = optimizer.minimize(loss, global_step=tf.train.get_global_step())
     train_ops = []
     if model_type.find('wide') >= 0:
-        opt_linear = tf.train.FtrlOptimizer(learning_rate=params['learning_rate'])
+        # FtrlOptimizer
+        opt_linear = tf.train.AdamOptimizer(learning_rate=params['learning_rate'])
         grads_linear = opt_linear.compute_gradients(loss, tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, scope='linear_model'))
         trainer_linear = opt_linear.apply_gradients(grads_linear, global_step=tf.train.get_global_step())
         train_ops.append(trainer_linear)
@@ -638,7 +643,7 @@ def main(unused_argv):
         max_steps=FLAGS.num_epochs
     )
     input_fn_for_eval = lambda: eval_input_fn(eval_files, FLAGS.batch_size)
-    eval_spec = tf.estimator.EvalSpec(input_fn=input_fn_for_eval, throttle_secs=600)
+    eval_spec = tf.estimator.EvalSpec(input_fn=input_fn_for_eval, throttle_secs=300)
 
     print("before train and evaluate")
     tf.estimator.train_and_evaluate(model, train_spec, eval_spec)
