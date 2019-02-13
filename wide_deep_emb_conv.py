@@ -36,10 +36,8 @@ os.environ["TF_CPP_MIN_LOG_LEVEL"]='3' # 只显示 Error
 
 #ages,age,gender,platform,phone,location,network,bidtype,psid,style,link,show,position,zerocate,fircate,seccat,hierarchy_smooth_ctr,history_ctr,gender_feed_smooth_ctr,gender_cust_smooth_ctr,platform_feed_smooth_ctr,platform_cust_smooth_ctr,cust60_smooth_ctr,custid,adid,feedid
 
-_CSV_COLUMNS = ['ages','age','gender','platform','phone','location','network','bidtype','psid','style','link','show','position','zerocate','fircate','seccate','hierarchy_smooth_ctr','history_ctr','gender_feed_smooth_ctr','gender_cust_smooth_ctr','platform_feed_smooth_ctr','platform_cust_smooth_ctr','cust60_smooth_ctr','custid','adid','feedid','user_class','cust_tag','feed_word','user_bhvtag','user_bhvword','label']
-#_CSV_COLUMNS = ['ages','age','gender','platform','phone','location','network','bidtype','psid','style','link','show','position','zerocate','fircate','seccate','hierarchy_smooth_ctr','history_ctr','gender_feed_smooth_ctr','gender_cust_smooth_ctr','platform_feed_smooth_ctr','platform_cust_smooth_ctr','cust60_smooth_ctr','custid','adid','feedid','label']
+_CSV_COLUMNS = ['ages','age','gender','platform','phone','location','network','bidtype','psid','style','link','show','position','zerocate','fircate','seccate','hierarchy_smooth_ctr','history_ctr','gender_feed_smooth_ctr','gender_cust_smooth_ctr','platform_feed_smooth_ctr','platform_cust_smooth_ctr','cust60_smooth_ctr','custid','adid','feedid','user_class','cust_tag','feed_word','user_bhvtag','user_bhvword','ig']
 _CSV_COLUMN_DEFAULTS = [[''], [1008], [''],[''],[''],[''], [''], [''], [''], [''], [''], [''], [''], [''], [''], [''], [0], [0], [0], [0], [0], [0], [0], ['0'], ['0'], ['0'], ['0'],['0'], ['0'], ['0'],['0'], [0]]
-#_CSV_COLUMN_DEFAULTS = [[''], [1008], [''], [''], [''], [''], [''], [''], [''], [''], [''], [''], [''], [''], [''], [''], [0], [0], [0], [0], [0], [0], [0], [''], [''], [''], [0]]
 
 # for 5 vector
 #_CSV_COLUMNS = ['user_class', 'cust_tag', 'feed_word', 'user_bhvword', 'user_bhvtag', 'label']
@@ -80,7 +78,6 @@ def define_flags():
     flags.DEFINE_string("embedding_model"        , ""              , "./model_zoo/wide_deep_emb_conv_dropout/model.ckpt-47521")
     flags.DEFINE_integer("embedding_dim"         , 100             , "100/200")
     flags.DEFINE_boolean("fineturn"              , True            , "fine-turn the embedding")
-    flags.DEFINE_boolean("with_usm_layer"        , True            , "use usm layer or not")
     flags.DEFINE_boolean("only_usm_input"        , False           , "")
 
     FLAGS = flags.FLAGS
@@ -194,6 +191,14 @@ def build_model_columns():
         user_bhvword_emb = tf.feature_column.embedding_column(user_bhvword, dimension=FLAGS.embedding_dim, initializer=he_init)
         user_bhvtag_emb = tf.feature_column.embedding_column(user_bhvtag, dimension=FLAGS.embedding_dim, initializer=he_init)
 
+
+    he_init = tf.initializers.truncated_normal #tf.keras.initializers.he_normal
+    user_class_emb2 = tf.feature_column.embedding_column(user_class, dimension=FLAGS.embedding_dim, initializer=he_init)
+    cust_tag_emb2 = tf.feature_column.embedding_column(cust_tag, dimension=FLAGS.embedding_dim, initializer=he_init)
+    feed_word_emb2 = tf.feature_column.embedding_column(feed_word, dimension=FLAGS.embedding_dim, initializer=he_init)
+    user_bhvword_emb2 = tf.feature_column.embedding_column(user_bhvword, dimension=FLAGS.embedding_dim, initializer=he_init)
+    user_bhvtag_emb2 = tf.feature_column.embedding_column(user_bhvtag, dimension=FLAGS.embedding_dim, initializer=he_init)
+
     '''
     # Transformations.
     age_buckets = tf.feature_column.bucketized_column(
@@ -227,7 +232,7 @@ def build_model_columns():
     wide_columns = base_columns # + crossed_columns
 
     # age, ages, gender, platform, phone, location, network, bidtype, psid, style, link, show, position, zerocate, fircate, seccate, custid, adid, feedid,
-    deep_columns = [
+    '''deep_columns = [
         age,
         hierarchy_smooth_ctr,
         history_ctr,
@@ -252,11 +257,37 @@ def build_model_columns():
         user_bhvword_emb,
         user_bhvtag_emb
     ]
+    '''
+    deep_columns = [user_class_emb,
+        cust_tag_emb,
+        feed_word_emb,
+        user_bhvword_emb,
+        user_bhvtag_emb]
+    usm_deep_columns = [
+        age,
+        hierarchy_smooth_ctr,
+        history_ctr,
+        gender_feed_smooth_ctr,
+        gender_cust_smooth_ctr,
+        platform_feed_smooth_ctr,
+        platform_cust_smooth_ctr,
+        cust60_smooth_ctr,
+        tf.feature_column.indicator_column(gender),
+        tf.feature_column.indicator_column(phone),
+        tf.feature_column.indicator_column(bidtype),
+        tf.feature_column.indicator_column(position),
+        tf.feature_column.indicator_column(style),
+        tf.feature_column.indicator_column(link),
+        tf.feature_column.indicator_column(show),
+        tf.feature_column.indicator_column(ages),
+        # To show an example of embedding
+        tf.feature_column.embedding_column(seccate, dimension=8)
+    ]
 
     embedding_columns = [user_class_emb, cust_tag_emb, feed_word_emb, user_bhvword_emb, user_bhvtag_emb]
     #embedding_columns = [[]]
 
-    return wide_columns, deep_columns, embedding_columns
+    return wide_columns, deep_columns, embedding_columns, usm_deep_columns
 
 '''
 def build_model_columns_sparse():
@@ -293,9 +324,10 @@ def emb_conv_nn(features, labels, mode, params):
 
     # kernel = tf.Variable(tf.random_uniform([1, 2, 2], -0.5, 0.5), trainable=True, name='kernel') # [1, 2, 2] for [row, col, kernel_num] cause the shape of t2d(v_user,v_ad) is 100*2, so conv on row-dim make no means
     # kernel-2: [1,1] / [1,-1] / [dot_product]
-    # kernel-3: [1,1,1] / [-1,1,1] / [1,-1,1] / [1,1,-1] / [dot_product]
+    # kernel-3: [-1,1,1] / [1,-1,1] / [1,1,-1] / [dot_product]
     kernel_2 = tf.constant([[[1.0, 1.0], [1.0, -1.0]]], name='kernel_2')
-    kernel_3 = tf.constant([[[1.0,-1.0,1.0,1.0], [1.0,1.0,-1.0,1.0], [1.0,1.0,1.0,-1.0]]], name='kernel_3')
+    kernel_3 = tf.constant([[[-1.0,1.0,1.0], [1.0,-1.0,1.0], [1.0,1.0,-1.0]]], name='kernel_3')
+    kernel_4 = tf.constant([[[-1.0,1.0,1.0,1.0], [1.0,-1.0,1.0,1.0], [1.0,1.0,-1.0,1.0], [1.0,1.0,1.0,-1.0]]], name='kernel_4')
 
     print('---------------------\ninput_vector:\t'+str(len(embs))+'\t'+str(embs))
     multi_convs = []
@@ -317,15 +349,28 @@ def emb_conv_nn(features, labels, mode, params):
             t3d_dot = tf.expand_dims(tf.multiply(tf.multiply(v1, v2), v3), 2)
             multi_convs.append(t3d_dot)
             print('3d:\t\t'+str(t3d)+'\t\t'+str(t3d_conv)+'\t\t'+str(t3d_dot))
+    if len(embs) > 3:
+        for v1,v2,v3,v4 in itertools.combinations(embs, 4):
+            t4d = tf.stack([v1, v2, v3, v4], axis=2)
+            t4d_conv = tf.nn.conv1d(t4d, kernel_4, 1, 'VALID')
+            multi_convs.append(t4d_conv)
+            # v1.*v2.*v3
+            t4d_dot = tf.expand_dims(tf.multiply(tf.multiply(tf.multiply(v1, v2), v3), v4), 2)
+            multi_convs.append(t4d_dot)
+            print('4d:\t\t'+str(t4d)+'\t\t'+str(t4d_conv)+'\t\t'+str(t4d_dot))
 
     conv_layer = tf.concat(multi_convs, axis=2)
     print('---------------------\nconv_layer:\t'+str(conv_layer))
 
-    pool_1 = tf.nn.pool(conv_layer, [3], 'AVG', 'VALID', strides=[1])
-    pool_2 = tf.nn.pool(conv_layer, [7], 'AVG', 'VALID', strides=[3])
-    pool_3 = tf.nn.pool(conv_layer, [13], 'AVG','VALID', strides=[6])
-    print('---------------------\npool:\t'+str(pool_1)+'\t'+str(pool_2)+'\t'+str(pool_3))
-    flatten_layer = tf.concat([tf.layers.flatten(pool_1), tf.layers.flatten(pool_2), tf.layers.flatten(pool_3)], axis=1, name='flatten_layer')
+    pool_1 = None #pool_1 = tf.nn.pool(conv_layer, [3], 'AVG', 'VALID', strides=[1])
+    pool_2 = None #pool_2 = tf.nn.pool(conv_layer, [7], 'AVG', 'VALID', strides=[3])
+    pool_3 = None #tf.nn.pool(conv_layer, [13], 'AVG','VALID', strides=[6])
+    pool_4 = tf.nn.pool(conv_layer, [25], 'AVG','VALID', strides=[13])
+    pool_5 = tf.nn.pool(conv_layer, [50], 'AVG','VALID', strides=[25])
+    pool_6 = tf.nn.pool(conv_layer, [100], 'AVG','VALID', strides=[50])
+    print('---------------------\npool:\t'+str(pool_1)+'\t'+str(pool_2)+'\t'+str(pool_3)+'\t'+str(pool_4)+'\t'+str(pool_5)+'\t'+str(pool_6))
+    #flatten_layer = tf.concat([tf.layers.flatten(pool_1), tf.layers.flatten(pool_2), tf.layers.flatten(pool_3), tf.layers.flatten(pool_4), tf.layers.flatten(pool_5)], axis=1, name='flatten_layer')
+    flatten_layer = tf.concat([tf.layers.flatten(pool_5), tf.layers.flatten(pool_6)], axis=1, name='flatten_layer')
     print('---------------------\nflatten: '+str(flatten_layer)+'\n')
 
     he_init = tf.contrib.layers.variance_scaling_initializer(mode="FAN_AVG")
@@ -410,14 +455,16 @@ def my_model(features, labels, mode, params):
             input_layer = tf.feature_column.input_layer(features, params['deep_feature'])
 
             # concat emb_conv flatten tensor to input_layer
-            #usm_layer = None
-            if model_type.find('conv') >= 0 and FLAGS.with_usm_layer:
-                #usm_layer = flatten_layer
-                print('---------------------\nwith_usm:\t'+str(flatten_layer))
+            if model_type.find('conv') >= 0:
+                he_init = tf.contrib.layers.variance_scaling_initializer(mode="FAN_AVG")
+                delay_conv_layer = tf.layers.dense(tf.nn.dropout(flatten_layer, 0.3), params['usm_units'], activation=tf.nn.relu, name='delay_conv_layer', kernel_initializer=he_init, bias_initializer=tf.zeros_initializer())  #, kernel_regularizer=tf.contrib.layers.l1_regularizer(1.0))
+                delay_conv_layer = tf.nn.dropout(delay_conv_layer, 0.3)
+                print('---------------------\nwith_usm:\t'+str(flatten_layer)+'  -->  '+str(delay_conv_layer))
+
                 if FLAGS.only_usm_input:
-                    input_layer = flatten_layer
+                    input_layer = delay_conv_layer
                 else:
-                    input_layer = tf.concat([input_layer, flatten_layer], axis=1)
+                    input_layer = tf.concat([input_layer, delay_conv_layer], axis=1)
             print('---------------------\ninput deep layer:\t'+str(input_layer))
 
             units = params['hidden_units']
@@ -523,7 +570,7 @@ def build_estimator(model_dir, model_type):
     """Build an estimator appropriate for the given model type."""
     set_tfconfig_environ()
 
-    wide_columns, deep_columns, embedding_columns = build_model_columns()   #build_model_columns()
+    wide_columns, deep_columns, embedding_columns, usm_deep_columns = build_model_columns()   #build_model_columns()
     global _GLOBAL_FEATURES
     _GLOBAL_FEATURES = wide_columns + deep_columns + embedding_columns
     hidden_units = [300, 100, 80] #[100, 75, 50, 25]   #[400, 200, 100]  #[300, 100, 80, 80]
@@ -541,9 +588,10 @@ def build_estimator(model_dir, model_type):
             model_fn=my_model,
             params={
                 'wide_feature': wide_columns,
-                'deep_feature': deep_columns,
+                'deep_feature': deep_columns, # if model_type.find('conv') < 0 else usm_deep_columns,
                 'embedding_feature': embedding_columns,
                 'hidden_units': hidden_units,  #FLAGS.hidden_units.split(','),
+                'usm_units': 100,
                 'learning_rate': FLAGS.learning_rate,
                 'dropout_rate': FLAGS.dropout_rate,
                 'model_type': model_type
@@ -566,7 +614,7 @@ def build_estimator(model_dir, model_type):
 def parse_csv(value):
     columns = tf.decode_csv(value, record_defaults=_CSV_COLUMN_DEFAULTS)
     features = dict(zip(_CSV_COLUMNS, columns))
-    labels = features.pop('label')
+    labels = features.pop('ig')
     return features, { 'label': tf.to_float(labels) }   #tf.equal(labels, 1)
 
 def input_fn(data_file, num_epochs, shuffle_buffer_size, batch_size):
