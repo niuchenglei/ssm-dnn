@@ -1,4 +1,4 @@
-Unstructured Semantic Model supported Deep Neural Network for Click-Through Rate Prediction
+Structured Semantic Model supported Deep Neural Network for Click-Through Rate Prediction
 
 <img src="images/usm.png" width = "400" height = "226" div align=center />
 <img src="images/basis_scale.png" width = "250" height = "333" div align=center />
@@ -37,7 +37,7 @@ python/bin/python3 wide_deep_emb_conv.py \
 
 * ### --pretrain
 
-    * Indicates pretrain the USM or not.
+    * Indicates pretrain model or not.
 
 * ### --embedding_model
 
