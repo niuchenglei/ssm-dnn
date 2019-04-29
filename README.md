@@ -1,9 +1,5 @@
 Structured Semantic Model supported Deep Neural Network for Click-Through Rate Prediction
 
-<img src="images/ssm.png" width = "400" height = "226" div align=center />
-<img src="images/basis_scale.png" width = "250" height = "333" div align=center />
-<img src="images/wide_deep_ssm.png" width = "400" height = "430" div align=center />
-
 # File Description
 
 * ```./wide_deep.py``` : Traditional official Wide\&Deep 
@@ -43,4 +39,13 @@ python/bin/python3 wide_deep_emb_conv.py \
 * ### --embedding_model
 
     * The tf model file pre-trained. 
-    
+
+# Model Structure
+1. How SSM interect with Wide\&Deep
+<img src="images/wide_deep_ssm.png" width = "400" height = "430" div align=center />
+2. How to construct convolution sequences
+<img src="images/ssm.png" width = "400" height = "226" div align=center />
+3. How "Delay Convolution" works and perform better than traditional conv-pool-conv-pool methods
+<img src="images/basis_scale.png" width = "250" height = "333" div align=center />
+4. What is the SSM output vector looks like, we use t-sne to mapping high-dimension into 2-d graph to figure out what SSM learned from those feature embeddings.
+<img src="images/diagram_en.png" width = "400" height = "311" div align=center /> 
