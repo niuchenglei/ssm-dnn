@@ -1,13 +1,13 @@
 Structured Semantic Model supported Deep Neural Network for Click-Through Rate Prediction
 
-<img src="images/usm.png" width = "400" height = "226" div align=center />
+<img src="images/ssm.png" width = "400" height = "226" div align=center />
 <img src="images/basis_scale.png" width = "250" height = "333" div align=center />
 
 # File Description
 
 * ```./wide_deep.py``` : Traditional official Wide\&Deep 
 
-* ```./wide_deep_emb_conv.py``` : Wide\&Deep with convolution and pooling (USM main code)
+* ```./wide_deep_emb_conv.py``` : Wide\&Deep with convolution and pooling (SSM main code)
 
 * ```./sparse_array_categorical_column.py``` : Sparse array feature with CSV format input
 
