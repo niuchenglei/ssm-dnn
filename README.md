@@ -2,6 +2,7 @@ Structured Semantic Model supported Deep Neural Network for Click-Through Rate P
 
 <img src="images/ssm.png" width = "400" height = "226" div align=center />
 <img src="images/basis_scale.png" width = "250" height = "333" div align=center />
+<img src="images/wide_deep_ssm.png" width = "400" height = "430" div align=center />
 
 # File Description
 
