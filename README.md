@@ -1,6 +1,8 @@
 Structured Semantic Model supported Deep Neural Network for Click-Through Rate Prediction
 
-# File Description
+This project is the implementation of proposal method in the [paper](https://arxiv.org/abs/1812.01353)
+
+# Files
 
 * ```./wide_deep.py``` : Traditional official Wide\&Deep 
 
@@ -10,10 +12,8 @@ Structured Semantic Model supported Deep Neural Network for Click-Through Rate P
 
 * ```./submit_local.sh``` : Run local
 
-# How to run
-1. Run ```sh submit_local.sh```
-
-# Sample Submit Command
+# How to use
+Execute `sh submit_local.sh` to submit the job
 
 ```
 type=wide_deep_conv   # wide, deep, wide_deep, wide_deep_conv are available
@@ -30,7 +30,7 @@ python/bin/python3 wide_deep_emb_conv.py \
     --model_type=${type}
 ```
 
-# Submit Command Tutorial
+# Arguments
 
 * ### --pretrain
 
