@@ -60,3 +60,4 @@ def categorical_column_with_array_input(key, num_buckets, category_delimiter="|"
         raise ValueError('Invalid num_buckets {}.'.format(num_buckets))
     return _SparseArrayCategoricalColumn(key, num_buckets, category_delimiter)
 
+

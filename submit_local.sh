@@ -31,3 +31,5 @@ python/bin/python3 wide_deep_emb_conv.py \
 #--embedding_model=./model_zoo/wide_deep_emb_conv_cluster/model.ckpt-114471 \
 
 #python/python/bin/python3 wide_deep_emb_conv.py --task=dump
+
+

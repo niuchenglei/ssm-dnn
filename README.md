@@ -49,3 +49,5 @@ python/bin/python3 wide_deep_emb_conv.py \
 <img src="images/basis_scale.png" width = "250" height = "333" div align=center />
 4. What is the SSM output vector looks like, we use t-sne to mapping high-dimension into 2-d graph to figure out what SSM learned from those feature embeddings.
 <img src="images/diagram_en.png" width = "400" height = "311" div align=center /> 
+
+
